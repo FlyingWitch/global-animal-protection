@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>全球动物保护立法进程</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="https://d3js.org/topojson.v3.min.js"></script>
+</head>
+<body>
+
+  <header class="site-header">
+    <h1>全球动物保护立法进程</h1>
+    <p class="subtitle">基于公开立法数据的可视化时间线</p>
+  </header>
+
+  <main>
+    <section id="map-view" class="view active">
+      <div class="map-wrapper">
+        <div class="map-container" id="map-container">
+          <svg id="world-map" viewBox="0 0 960 500" preserveAspectRatio="xMidYMid meet">
+            <g>
+              <path class="graticule" d="M0,0L960,0L960,500L0,500Z"></path>
+              <g id="world-countries"></g>
+            </g>
+            <g class="markers" id="map-markers"></g>
+          </svg>
+          <div class="zoom-controls">
+            <button class="zoom-btn" id="zoom-in" title="放大">+</button>
+            <button class="zoom-btn" id="zoom-out" title="缩小">−</button>
+            <button class="zoom-btn" id="zoom-reset" title="重置">↺</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="legend-panel">
+        <h3>立法完善程度</h3>
+        <div id="legend-items" class="legend-items"></div>
+        <p class="legend-note">数据来源：Global Animal Law 数据库 (globalanimallaw.org)、各国立法机构公开资料</p>
+      </div>
+
+      <div class="intro-text">
+        <p>点击地图上的圆点查看该国动物保护立法时间线。使用右下角按钮或滚轮缩放地图。</p>
+      </div>
+    </section>
+
+    <section id="timeline-view" class="view">
+      <div class="timeline-header">
+        <button id="back-btn" class="back-btn">← 返回地图</button>
+        <div class="country-title">
+          <h2 id="timeline-country-name"></h2>
+          <span id="timeline-country-level" class="level-badge"></span>
+        </div>
+      </div>
+      <div class="timeline-wrapper">
+        <div class="timeline-line"></div>
+        <div id="timeline-events"></div>
+      </div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
