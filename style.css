@@ -512,60 +512,98 @@ main {
 
 /* Footer */
 .site-footer {
+  background: #f3f4f6;
   border-top: 1px solid var(--border);
-  background: var(--surface);
-  padding: 2.5rem 1.5rem;
+  padding: 1.25rem 2rem;
   margin-top: 2rem;
-}
-
-.footer-content {
-  max-width: 640px;
-  margin: 0 auto;
-}
-
-.footer-contact {
   display: flex;
   align-items: center;
-  gap: 1.5rem;
-  flex-wrap: wrap;
-  justify-content: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 60px;
 }
 
-.qr-section {
-  text-align: center;
-  flex-shrink: 0;
-}
-
-.qr-img {
-  width: 120px;
-  height: 120px;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  object-fit: cover;
-}
-
-.qr-label {
-  margin-top: 0.5rem;
+.footer-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
   font-size: 0.75rem;
   color: var(--text-muted);
 }
 
-.footer-text {
-  flex: 1;
-  min-width: 200px;
+.footer-left .footer-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  opacity: 0.4;
 }
 
-.footer-text h3 {
-  font-size: 1rem;
-  font-weight: 500;
-  color: var(--text);
-  margin-bottom: 0.5rem;
+.footer-right {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-shrink: 0;
 }
 
-.footer-text p {
+.footer-text-block {
+  text-align: right;
+}
+
+.footer-text-block .footer-title {
   font-size: 0.8125rem;
+  font-weight: 500;
   color: var(--text-secondary);
-  line-height: 1.5;
+  margin-bottom: 0.15rem;
+}
+
+.footer-text-block .footer-subtitle {
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+  line-height: 1.3;
+}
+
+.qr-img {
+  width: 64px;
+  height: 64px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  object-fit: cover;
+}
+
+/* Q&A Bar (removed - now on about.html) */
+
+/* About page */
+.about-page {
+  padding: 2.5rem 1.5rem;
+}
+
+.about-content {
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.back-link {
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 0.8125rem;
+  transition: color 0.2s;
+}
+
+.back-link:hover {
+  color: var(--accent);
+}
+
+.footer-about-link {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: color 0.2s;
+  white-space: nowrap;
+}
+
+.footer-about-link:hover {
+  color: var(--accent);
 }
 
 /* Responsive */
