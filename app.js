@@ -317,20 +317,18 @@ function bindShareModalEvents(overlay, country, fileName, bgColor) {
     try {
       await loadHtml2canvas();
       const card = overlay.querySelector('#share-card-content');
-      // Clone the card to a clean off-screen container so html2canvas
-      // renders exactly what's in the card, not affected by the modal layout.
-      const clone = card.cloneNode(true);
-      const wrapper = document.createElement('div');
-      wrapper.style.cssText = 'position:fixed;left:-9999px;top:0;z-index:-1;';
-      wrapper.appendChild(clone);
-      document.body.appendChild(wrapper);
-      const canvas = await html2canvas(clone, {
+      // Wait for fonts and next paint so computed styles/layout match preview.
+      await document.fonts.ready;
+      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+      const canvas = await html2canvas(card, {
         scale: 2,
-        backgroundColor: bgColor,
+        backgroundColor: null,
+        scrollX: 0,
+        scrollY: 0,
         useCORS: true,
         allowTaint: true
       });
-      wrapper.remove();
       const link = document.createElement('a');
       link.download = `${fileName}.png`;
       link.href = canvas.toDataURL('image/png');
