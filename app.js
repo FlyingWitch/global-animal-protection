@@ -206,23 +206,7 @@ function renderTimelineEvents(timeline) {
   });
 }
 
-// === Share card ===
-let html2canvasLoaded = false;
-
-function loadHtml2canvas() {
-  return new Promise((resolve, reject) => {
-    if (html2canvasLoaded || window.html2canvas) {
-      html2canvasLoaded = true;
-      resolve();
-      return;
-    }
-    const script = document.createElement('script');
-    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
-    script.onload = () => { html2canvasLoaded = true; resolve(); };
-    script.onerror = reject;
-    document.head.appendChild(script);
-  });
-}
+// === Share card (Canvas-rendered: preview & download are the same image) ===
 
 const morandiColors = {
   1: { bg: '#e8e4df', accent: '#a8a29e', text: '#44403c' },
@@ -231,104 +215,288 @@ const morandiColors = {
   4: { bg: '#c9ddd3', accent: '#3d6b54', text: '#1e3a2b' }
 };
 
-function createShareCard(country, item) {
-  const colors = morandiColors[country.level] || morandiColors[1];
-  const levelLabel = levelLabels[country.level];
+const SHARE_FONT = "'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif";
+const CARD_SCALE = 2;
 
+function hexToRgba(hex, a) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+function wrapText(ctx, text, maxW) {
+  const lines = [];
+  let line = '';
+  for (const ch of text) {
+    const test = line + ch;
+    if (ctx.measureText(test).width > maxW && line) {
+      lines.push(line);
+      line = ch;
+    } else {
+      line = test;
+    }
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  const rad = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + rad, y);
+  ctx.arcTo(x + w, y, x + w, y + h, rad);
+  ctx.arcTo(x + w, y + h, x, y + h, rad);
+  ctx.arcTo(x, y + h, x, y, rad);
+  ctx.arcTo(x, y, x + w, y, rad);
+  ctx.closePath();
+}
+
+function measureCanvas() {
+  const c = document.createElement('canvas');
+  return c.getContext('2d');
+}
+
+function drawBadge(ctx, text, x, y, accent) {
+  ctx.font = `500 10px ${SHARE_FONT}`;
+  const tw = ctx.measureText(text).width;
+  const px = 10, py = 4;
+  const w = tw + px * 2;
+  const h = 10 + py * 2;
+  ctx.fillStyle = accent;
+  roundRect(ctx, x, y, w, h, h / 2);
+  ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.textBaseline = 'top';
+  ctx.fillText(text, x + px, y + py);
+  return w;
+}
+
+function drawFooter(ctx, cardW, padX, y, accent, textColor) {
+  ctx.strokeStyle = accent;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(padX, y);
+  ctx.lineTo(cardW - padX, y);
+  ctx.stroke();
+  y += 14;
+  ctx.font = `400 11px ${SHARE_FONT}`;
+  ctx.fillStyle = hexToRgba(textColor, 0.7);
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+  ctx.fillText('全球动物保护立法进程', padX, y);
+  ctx.font = `400 11px monospace`;
+  ctx.textAlign = 'right';
+  ctx.fillText('global-animal-protection', cardW - padX, y);
+  ctx.textAlign = 'left';
+  return y + 11;
+}
+
+function renderSingleCard(country, item) {
+  const colors = morandiColors[country.level] || morandiColors[1];
+  const label = levelLabels[country.level];
+  const cardW = 360, padX = 28, padY = 32;
+  const cW = cardW - padX * 2;
+  const mc = measureCanvas();
+
+  // --- measure height ---
+  let y = padY;
+  y += 22 + 24;                       // top row + gap
+  mc.font = `700 40px ${SHARE_FONT}`;
+  const yrLines = wrapText(mc, String(item.year), cW);
+  y += yrLines.length * 40 + 12;       // year + gap
+  mc.font = `600 17px ${SHARE_FONT}`;
+  const tLines = wrapText(mc, item.title, cW);
+  y += tLines.length * (17 * 1.4) + 12; // title + gap
+  mc.font = `400 13px ${SHARE_FONT}`;
+  const dLines = wrapText(mc, item.description, cW);
+  y += dLines.length * (13 * 1.7);      // desc
+  y += 28;                             // footer margin
+  y += 14 + 11 + 1;                    // footer border + text
+  y += padY;                           // bottom padding
+  const cardH = Math.ceil(y);
+
+  // --- draw ---
+  const canvas = document.createElement('canvas');
+  canvas.width = cardW * CARD_SCALE;
+  canvas.height = cardH * CARD_SCALE;
+  canvas.style.width = cardW + 'px';
+  canvas.style.height = cardH + 'px';
+  canvas.style.borderRadius = '12px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(CARD_SCALE, CARD_SCALE);
+
+  ctx.fillStyle = colors.bg;
+  roundRect(ctx, 0, 0, cardW, cardH, 12);
+  ctx.fill();
+
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+  y = padY;
+
+  // top row
+  ctx.font = `600 14px ${SHARE_FONT}`;
+  ctx.fillStyle = colors.accent;
+  ctx.fillText(country.name, padX, y + 3);
+  mc.font = `500 10px ${SHARE_FONT}`;
+  const badgeW = mc.measureText(label).width + 20;
+  drawBadge(ctx, label, cardW - padX - badgeW, y, colors.accent);
+  y += 22 + 24;
+
+  // year
+  ctx.font = `700 40px ${SHARE_FONT}`;
+  ctx.fillStyle = colors.accent;
+  ctx.fillText(String(item.year), padX, y);
+  y += yrLines.length * 40 + 12;
+
+  // title
+  ctx.font = `600 17px ${SHARE_FONT}`;
+  ctx.fillStyle = colors.text;
+  for (const ln of tLines) {
+    ctx.fillText(ln, padX, y);
+    y += 17 * 1.4;
+  }
+  y += 12;
+
+  // description
+  ctx.font = `400 13px ${SHARE_FONT}`;
+  ctx.fillStyle = hexToRgba(colors.text, 0.85);
+  for (const ln of dLines) {
+    ctx.fillText(ln, padX, y);
+    y += 13 * 1.7;
+  }
+
+  // footer
+  y += 28;
+  drawFooter(ctx, cardW, padX, y, colors.accent, colors.text);
+
+  return canvas;
+}
+
+function renderTimelineCard(country) {
+  const colors = morandiColors[country.level] || morandiColors[1];
+  const label = levelLabels[country.level];
+  const cardW = 380, padX = 28, padY = 32;
+  const cW = cardW - padX * 2;
+  const tl = country.timeline;
+  const mc = measureCanvas();
+
+  // --- measure ---
+  let y = padY;
+  y += 22 + 24;                       // top row + gap
+  y += 12 + 16;                       // label + gap
+  const itemLines = [];
+  for (const t of tl) {
+    mc.font = `400 13px ${SHARE_FONT}`;
+    const lines = wrapText(mc, t.title, cW - 48 - 14);
+    itemLines.push({ year: t.year, lines });
+    y += Math.max(14, lines.length * 13 * 1.5);
+    y += 10; // gap
+  }
+  y -= 10; // remove last gap
+  y += 28 + 14 + 11 + 1 + padY;      // footer + bottom padding
+  const cardH = Math.ceil(y);
+
+  // --- draw ---
+  const canvas = document.createElement('canvas');
+  canvas.width = cardW * CARD_SCALE;
+  canvas.height = cardH * CARD_SCALE;
+  canvas.style.width = cardW + 'px';
+  canvas.style.height = cardH + 'px';
+  canvas.style.borderRadius = '12px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(CARD_SCALE, CARD_SCALE);
+
+  ctx.fillStyle = colors.bg;
+  roundRect(ctx, 0, 0, cardW, cardH, 12);
+  ctx.fill();
+
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+  y = padY;
+
+  // top row
+  ctx.font = `600 14px ${SHARE_FONT}`;
+  ctx.fillStyle = colors.accent;
+  ctx.fillText(country.name, padX, y + 3);
+  mc.font = `500 10px ${SHARE_FONT}`;
+  const badgeW = mc.measureText(label).width + 20;
+  drawBadge(ctx, label, cardW - padX - badgeW, y, colors.accent);
+  y += 22 + 24;
+
+  // label
+  ctx.font = `600 12px ${SHARE_FONT}`;
+  ctx.fillStyle = colors.accent;
+  ctx.fillText('动物保护立法进程', padX, y);
+  y += 12 + 16;
+
+  // items
+  for (const { year, lines } of itemLines) {
+    const yearStr = String(year);
+    ctx.font = `700 14px ${SHARE_FONT}`;
+    ctx.fillStyle = colors.accent;
+    ctx.fillText(yearStr, padX, y);
+    ctx.font = `400 13px ${SHARE_FONT}`;
+    ctx.fillStyle = hexToRgba(colors.text, 0.85);
+    let ly = y;
+    for (const ln of lines) {
+      ctx.fillText(ln, padX + 48 + 14, ly);
+      ly += 13 * 1.5;
+    }
+    y += Math.max(14, lines.length * 13 * 1.5) + 10;
+  }
+  y -= 10;
+
+  // footer
+  y += 28;
+  drawFooter(ctx, cardW, padX, y, colors.accent, colors.text);
+
+  return canvas;
+}
+
+function createShareOverlay(canvas, wide) {
   const overlay = document.createElement('div');
   overlay.className = 'share-overlay';
   overlay.innerHTML = `
-    <div class="share-modal">
+    <div class="share-modal${wide ? ' share-modal-wide' : ''}">
       <div class="share-modal-header">
         <span>分享卡片预览</span>
         <button class="share-close-btn">&times;</button>
       </div>
-      <div class="share-card-preview">
-        <div class="share-card" id="share-card-content" style="background: ${colors.bg}; color: ${colors.text};">
-          <div class="share-card-top">
-            <span class="share-card-country" style="color: ${colors.accent};">${country.name}</span>
-            <span class="share-card-level" style="background: ${colors.accent};">${levelLabel}</span>
-          </div>
-          <div class="share-card-year" style="color: ${colors.accent};">${item.year}</div>
-          <div class="share-card-title">${item.title}</div>
-          <div class="share-card-desc">${item.description}</div>
-          <div class="share-card-footer" style="border-color: ${colors.accent};">
-            <span>全球动物保护立法进程</span>
-            <span class="share-card-url">global-animal-protection</span>
-          </div>
-        </div>
-      </div>
+      <div class="share-card-preview"></div>
       <div class="share-modal-actions">
         <button class="share-download-btn" id="share-download">下载图片</button>
       </div>
     </div>
   `;
+  overlay.querySelector('.share-card-preview').appendChild(canvas);
   document.body.appendChild(overlay);
-  bindShareModalEvents(overlay, country, `${country.name}-${item.year}`, colors.bg);
+  return overlay;
+}
+
+function createShareCard(country, item) {
+  const canvas = renderSingleCard(country, item);
+  const overlay = createShareOverlay(canvas, false);
+  bindShareModalEvents(overlay, `${country.name}-${item.year}`, canvas);
 }
 
 function createTimelineShareCard(country) {
-  const colors = morandiColors[country.level] || morandiColors[1];
-  const levelLabel = levelLabels[country.level];
-  const timeline = country.timeline;
-  const milestones = timeline.map(t => `<div class="share-tl-item"><span class="share-tl-year">${t.year}</span><span class="share-tl-title">${t.title}</span></div>`).join('');
-
-  const overlay = document.createElement('div');
-  overlay.className = 'share-overlay';
-  overlay.innerHTML = `
-    <div class="share-modal share-modal-wide">
-      <div class="share-modal-header">
-        <span>分享卡片预览</span>
-        <button class="share-close-btn">&times;</button>
-      </div>
-      <div class="share-card-preview">
-        <div class="share-card share-card-timeline" id="share-card-content" style="background: ${colors.bg}; color: ${colors.text};">
-          <div class="share-card-top">
-            <span class="share-card-country" style="color: ${colors.accent};">${country.name}</span>
-            <span class="share-card-level" style="background: ${colors.accent};">${levelLabel}</span>
-          </div>
-          <div class="share-card-tl-label" style="color: ${colors.accent};">动物保护立法进程</div>
-          <div class="share-tl-list">${milestones}</div>
-          <div class="share-card-footer" style="border-color: ${colors.accent};">
-            <span>全球动物保护立法进程</span>
-            <span class="share-card-url">global-animal-protection</span>
-          </div>
-        </div>
-      </div>
-      <div class="share-modal-actions">
-        <button class="share-download-btn" id="share-download">下载图片</button>
-      </div>
-    </div>
-  `;
-  document.body.appendChild(overlay);
-  bindShareModalEvents(overlay, country, `${country.name}-时间线`, colors.bg);
+  const canvas = renderTimelineCard(country);
+  const overlay = createShareOverlay(canvas, true);
+  bindShareModalEvents(overlay, `${country.name}-时间线`, canvas);
 }
 
-function bindShareModalEvents(overlay, country, fileName, bgColor) {
+function bindShareModalEvents(overlay, fileName, canvas) {
   overlay.querySelector('.share-close-btn').addEventListener('click', () => overlay.remove());
   overlay.addEventListener('click', (e) => {
     if (e.target === overlay) overlay.remove();
   });
 
-  overlay.querySelector('#share-download').addEventListener('click', async () => {
+  overlay.querySelector('#share-download').addEventListener('click', () => {
     const btn = overlay.querySelector('#share-download');
     btn.textContent = '生成中...';
     btn.disabled = true;
     try {
-      await loadHtml2canvas();
-      const card = overlay.querySelector('#share-card-content');
-      // Wait for fonts and next paint so computed styles/layout match preview.
-      await document.fonts.ready;
-      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-
-      const canvas = await html2canvas(card, {
-        scale: 2,
-        backgroundColor: null,
-        scrollX: 0,
-        scrollY: 0,
-        useCORS: true,
-        allowTaint: true
-      });
       const link = document.createElement('a');
       link.download = `${fileName}.png`;
       link.href = canvas.toDataURL('image/png');

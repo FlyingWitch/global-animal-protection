@@ -639,6 +639,13 @@ main {
   margin-bottom: 1.25rem;
 }
 
+.share-card-preview canvas {
+  border-radius: 12px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
+  max-width: 100%;
+  height: auto;
+}
+
 .share-card {
   width: 360px;
   padding: 2rem 1.75rem;
