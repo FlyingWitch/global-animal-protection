@@ -1051,8 +1051,8 @@
     },
     {
       "id": "china",
-      "name": "中国",
-      "nameEn": "China",
+      "name": "中国大陆",
+      "nameEn": "Mainland China",
       "level": 1,
       "geoPosition": [
         116.41,
